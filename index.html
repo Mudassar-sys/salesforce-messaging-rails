@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Salesforce Messaging Rails</title>
+<meta name="description" content="Where a Tier 2 messaging aggregator wins inside Salesforce: what is native, how the field plugs in, and the recommended product and architecture.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F7FA;
+  --panel:#FFFFFF;
+  --ink:#13213D;
+  --ink-2:#4A5672;
+  --rule:#D3DAE6;
+  --signal:#2D52D0;
+  --rail:#F0A500;
+  --rail-ink:#3D2A00;
+  --rail-soft:#FFF3D6;
+  --focus:#2D52D0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1628;
+    --panel:#152039;
+    --ink:#E7ECF5;
+    --ink-2:#A6B1C8;
+    --rule:#2A3756;
+    --signal:#8AA6FF;
+    --rail:#F2B12A;
+    --rail-ink:#2B1D00;
+    --rail-soft:#2A2312;
+    --focus:#8AA6FF;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1628;--panel:#152039;--ink:#E7ECF5;--ink-2:#A6B1C8;--rule:#2A3756;
+  --signal:#8AA6FF;--rail:#F2B12A;--rail-ink:#2B1D00;--rail-soft:#2A2312;--focus:#8AA6FF;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:17px;line-height:1.6;font-stretch:100%;
+  font-variant-numeric:tabular-nums;
+}
+a{color:var(--signal);text-underline-offset:3px;text-decoration-thickness:1px}
+a:focus-visible,button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.measure{max-width:66ch}
+sup a{font-size:.72em;text-decoration:none;font-weight:600;padding:0 1px}
+sup a:hover{text-decoration:underline}
+
+/* Hero */
+.hero{padding:72px 0 56px}
+.kicker{font-size:15px;color:var(--ink-2);margin:0 0 20px}
+h1{
+  font-stretch:125%;font-weight:800;letter-spacing:-.015em;
+  font-size:clamp(38px,6.4vw,76px);line-height:1.02;margin:0 0 28px;max-width:15ch;
+}
+.lede{font-size:clamp(18px,1.6vw,21px);line-height:1.55;max-width:60ch;margin:0}
+
+.surface-map{margin-top:56px}
+.surfaces{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:12px;position:relative;
+}
+.surface{
+  position:relative;background:var(--panel);border:2px solid var(--ink);
+  padding:14px 14px 16px;min-height:112px;display:flex;flex-direction:column;justify-content:space-between;
+}
+.surface.later{border-style:dashed;border-color:var(--ink-2);background:transparent}
+.surface b{font-stretch:112%;font-weight:700;font-size:16px;line-height:1.2}
+.surface span{font-size:13px;color:var(--ink-2);line-height:1.35}
+.surface::after{
+  content:"";position:absolute;left:50%;bottom:-22px;width:2px;height:20px;background:var(--ink);
+}
+.surface.later::after{background:repeating-linear-gradient(var(--ink-2) 0 4px,transparent 4px 7px)}
+.rail{
+  margin-top:22px;background:var(--rail);color:var(--rail-ink);
+  padding:16px 18px 18px;
+}
+.rail-title{font-stretch:118%;font-weight:800;font-size:18px;margin:0 0 10px}
+.rail ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 0}
+.rail li{font-size:14.5px;font-weight:600;padding-right:14px;margin-right:14px;border-right:1.5px solid rgba(61,42,0,.35)}
+.rail li:last-child{border-right:0}
+.carriers{
+  display:flex;align-items:center;gap:12px;margin-top:10px;color:var(--ink-2);font-size:14px;
+}
+.carriers::before{content:"";flex:1;height:0;border-top:2px solid var(--ink-2)}
+.legend{font-size:14px;color:var(--ink-2);margin:18px 0 0}
+
+/* Sections */
+section.block{padding:64px 0;border-top:1px solid var(--rule)}
+h2{
+  font-stretch:115%;font-weight:750;font-size:clamp(26px,3.2vw,36px);
+  line-height:1.12;letter-spacing:-.01em;margin:0 0 14px;max-width:24ch;
+}
+.intro{color:var(--ink-2);margin:0 0 36px}
+h3{font-stretch:110%;font-weight:700;font-size:19px;line-height:1.3;margin:0 0 8px}
+
+/* Ledger */
+.ledger{border-top:2px solid var(--ink)}
+.ledger-row{
+  display:grid;grid-template-columns:220px 1fr 1fr;gap:28px;
+  padding:24px 0;border-bottom:1px solid var(--rule);
+}
+.ledger-row h3{margin:0}
+.ledger-row p{margin:0}
+.col-label{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.price{font-weight:700;white-space:nowrap}
+.takeaway{
+  margin:32px 0 0;padding:20px 22px;background:var(--rail-soft);
+  border-left:6px solid var(--rail);max-width:78ch;
+}
+.takeaway p{margin:0}
+
+/* Field table */
+.field{width:100%;border-collapse:collapse;font-size:15.5px}
+.field th,.field td{text-align:left;vertical-align:top;padding:16px 14px 16px 0;border-bottom:1px solid var(--rule)}
+.field thead th{font-size:13.5px;font-weight:600;color:var(--ink-2);border-bottom:2px solid var(--ink)}
+.field tbody th{font-stretch:112%;font-weight:700;font-size:16.5px;width:150px}
+.field td:last-child{padding-right:0}
+.note{font-size:15px;color:var(--ink-2);margin:20px 0 0;max-width:78ch}
+
+/* Questions */
+.qa{display:grid;grid-template-columns:1fr 1.45fr;border-top:2px solid var(--ink)}
+.qa > div{padding:22px 0;border-bottom:1px solid var(--rule)}
+.qa .q{padding-right:36px}
+.qa .q h3{margin:0;font-size:18px}
+.qa .a p{margin:0}
+
+/* Lanes */
+.lanes-head,.lane-row{display:grid;grid-template-columns:1fr 56px 1fr}
+.lanes-head div{font-stretch:112%;font-weight:700;font-size:16px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.lanes-head .gut{border-bottom:2px solid var(--ink)}
+.path-title{font-stretch:112%;font-weight:700;font-size:15px;color:var(--ink-2);margin:26px 0 6px}
+.lane-row{position:relative}
+.lane-row .gut{position:relative}
+.lane-row .gut::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:4px;margin-left:-2px;background:var(--rail)}
+.step{background:var(--panel);border:1.5px solid var(--rule);padding:12px 14px;margin:6px 0;font-size:15.5px;line-height:1.5;display:flex;gap:12px}
+.step .n{flex:0 0 auto;font-weight:800;font-stretch:118%;color:var(--signal);min-width:1.2em}
+.step .tag{display:none}
+.lane-row .empty{min-height:1px}
+.boundary-label{font-size:13px;color:var(--ink-2);margin:10px 0 0;text-align:center}
+.eng{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:40px}
+.eng p{margin:0;font-size:15.5px}
+
+/* Challenges */
+.challenges{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.challenge{border-top:2px solid var(--ink);padding-top:18px}
+.challenge .claim{font-stretch:110%;font-weight:700;font-size:18px;margin:0 0 10px;line-height:1.3}
+.challenge .claim s{text-decoration-thickness:2px;text-decoration-color:var(--rail)}
+.challenge p{margin:0;font-size:15.5px}
+
+/* Milestones */
+.milestones{border-top:2px solid var(--ink)}
+.ms{display:grid;grid-template-columns:60px 1fr 170px;gap:24px;padding:22px 0;border-bottom:1px solid var(--rule)}
+.ms .n{font-stretch:125%;font-weight:800;font-size:30px;line-height:1;color:var(--signal)}
+.ms h3{margin:0 0 6px}
+.ms p{margin:0;font-size:15.5px}
+.ms .time{font-size:15px;font-weight:600;text-align:right}
+.ms .time small{display:block;font-weight:400;color:var(--ink-2);font-size:13.5px}
+
+/* Team + needs */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.list{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.list li{padding:14px 0;border-bottom:1px solid var(--rule);font-size:16px}
+
+/* Sources */
+.sources{columns:2;column-gap:40px;font-size:14px;color:var(--ink-2);padding-left:22px;margin:0}
+.sources li{break-inside:avoid;margin:0 0 10px;padding-left:4px}
+.sources a{word-break:break-word}
+footer{padding:28px 0 56px;border-top:1px solid var(--rule);font-size:14px;color:var(--ink-2)}
+
+/* Responsive */
+@media (max-width:980px){
+  .surfaces{grid-template-columns:repeat(3,1fr)}
+  .surfaces .surface:nth-child(-n+3)::after{display:none}
+  .ledger-row{grid-template-columns:1fr 1fr}
+  .ledger-row h3{grid-column:1/-1}
+  .eng,.challenges{grid-template-columns:1fr}
+  .sources{columns:1}
+}
+@media (max-width:720px){
+  body{font-size:16px}
+  .wrap{padding:0 16px}
+  .hero{padding:48px 0 40px}
+  .surfaces{grid-template-columns:repeat(2,1fr)}
+  .surfaces .surface:nth-child(-n+4)::after{display:none}
+  .surfaces .surface:nth-child(n+5)::after{display:block}
+  .surface{min-height:96px}
+  .ledger-row{grid-template-columns:1fr;gap:12px}
+  .field thead{display:none}
+  .field,.field tbody,.field tr,.field th,.field td{display:block;width:100%}
+  .field tr{border-bottom:1px solid var(--rule);padding:14px 0}
+  .field th,.field td{border:0;padding:4px 0}
+  .field td::before{content:attr(data-label);display:block;font-size:13px;color:var(--ink-2)}
+  .qa{grid-template-columns:1fr}
+  .qa .q{padding:20px 0 6px;border-bottom:0}
+  .qa .a{padding-top:0}
+  .lanes-head{display:none}
+  .lane-row{grid-template-columns:1fr}
+  .lane-row .gut,.lane-row .empty{display:none}
+  .step .tag{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:2px}
+  .boundary-label{display:none}
+  .ms{grid-template-columns:44px 1fr;gap:14px}
+  .ms .time{grid-column:2;text-align:left}
+  .two{grid-template-columns:1fr;gap:36px}
+  section.block{padding:48px 0}
+}
+@media (prefers-reduced-motion:no-preference){
+  .rail{transform-origin:left center;animation:lay 900ms cubic-bezier(.2,.7,.2,1) 200ms both}
+  .surface::after{animation:drop 500ms ease-out 1000ms both}
+  @keyframes lay{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes drop{from{opacity:0;transform:scaleY(0);transform-origin:top}to{opacity:1;transform:scaleY(1)}}
+}
+@media print{
+  .rail,.surface::after{animation:none}
+  section.block{break-inside:avoid-page}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">A Salesforce plan for a Tier 2 messaging aggregator</p>
+    <h1>Put your rails under every Salesforce surface.</h1>
+    <p class="lede">Salesforce sells its own SMS, WhatsApp and RCS through Marketing Cloud Next and Service Cloud, priced per org and per user, and lets partners in through a separate add-on. The opening for you is one thin package, self-serve from install to first message, that carries your registration, opt-out and content rules into record pages, Flow and Agentforce. Journey Builder, the Service console and voice join the same rail later, as upgrades rather than entry fees.</p>
+
+    <div class="surface-map" role="img" aria-label="Six Salesforce surfaces sit on one shared rail. Record pages and lists, Flow and Agentforce are in the first release. Journey Builder, the Service console and Salesforce Voice are added later on the same rail.">
+      <div class="surfaces">
+        <div class="surface"><b>Record pages and lists</b><span>Conversation panel, bulk send</span></div>
+        <div class="surface"><b>Flow</b><span>Send, wait for reply, branch</span></div>
+        <div class="surface"><b>Agentforce</b><span>Same actions, used by agents</span></div>
+        <div class="surface later"><b>Journey Builder</b><span>Custom activity for Marketing Cloud Engagement</span></div>
+        <div class="surface later"><b>Service console</b><span>Partner Messaging connector</span></div>
+        <div class="surface later"><b>Salesforce Voice</b><span>Partner telephony</span></div>
+      </div>
+      <div class="rail">
+        <p class="rail-title">Your rails</p>
+        <ul>
+          <li>Numbers and 10DLC registration</li>
+          <li>Opt-out enforcement</li>
+          <li>Content screening before the carrier</li>
+          <li>RCS templates</li>
+          <li>Delivery events</li>
+        </ul>
+      </div>
+      <div class="carriers">Carriers</div>
+      <p class="legend">Solid outline: first release. Dashed outline: added later on the same rail, same numbers, same consent.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="block" id="native">
+  <div class="wrap">
+    <h2>What Salesforce sells itself</h2>
+    <p class="intro measure">Three paths, three licences. This is the price umbrella any partner product sits under.</p>
+
+    <div class="ledger">
+      <div class="ledger-row">
+        <h3>Marketing Cloud Next</h3>
+        <p><span class="col-label">Native channels</span>SMS, WhatsApp and RCS. Winter ’27 expands RCS, adds WhatsApp sends by business-scoped user ID, and adds flash messaging.<sup><a href="#s2">2</a></sup></p>
+        <p><span class="col-label">What the customer pays</span>Growth edition <span class="price">$1,500 per org per month</span>. Two-way conversations for SMS and WhatsApp are listed in Advanced, <span class="price">$3,250 per org per month</span>.<sup><a href="#s1">1</a></sup></p>
+      </div>
+      <div class="ledger-row">
+        <h3>Service Cloud messaging</h3>
+        <p><span class="col-label">Native channels</span>WhatsApp, Facebook Messenger, Apple Messages for Business, LINE, SMS, web and in-app. RCS is not on the list.<sup><a href="#s3">3</a></sup> Standard SMS channels were retired on February 14, 2026, and Salesforce directs orgs to enhanced channels.<sup><a href="#s4">4</a></sup></p>
+        <p><span class="col-label">What the customer pays</span>Enhanced Messaging is an additional <span class="price">$75 per user per month</span> on Core and Advanced, and included in Max.<sup><a href="#s5">5</a></sup></p>
+      </div>
+      <div class="ledger-row">
+        <h3>Partner doors</h3>
+        <p><span class="col-label">How partners get in</span>Partner messaging into the Service console (Bring Your Own Channel), partner telephony into Salesforce Voice, and custom activities in Journey Builder.<sup><a href="#s6">6</a> <a href="#s7">7</a> <a href="#s8">8</a></sup></p>
+        <p><span class="col-label">What it takes</span>Bring Your Own Channel needs the Digital Engagement SKU with the Partner Messaging add-on on the customer’s side.<sup><a href="#s6">6</a></sup> Voice is an add-on licence.<sup><a href="#s7">7</a></sup> Journey Builder activities run on your own hosted service, outside Salesforce Support.<sup><a href="#s8">8</a></sup> Every managed package passes security review before listing.<sup><a href="#s9">9</a></sup></p>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <p>Every Salesforce path is licensed per org or per user, and each partner door adds a licence on the customer’s side. A package that runs on your rails and needs none of those add-ons can be priced on usage, which is how your customers already buy from you.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="field">
+  <div class="wrap">
+    <h2>How the field plugs in</h2>
+    <p class="intro measure">What each provider states publicly today, and what it tells you about where they aim.</p>
+
+    <table class="field">
+      <thead>
+        <tr><th scope="col">Provider</th><th scope="col">Where it plugs in</th><th scope="col">Channels named</th><th scope="col">What it tells you</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Vonage</th>
+          <td data-label="Where it plugs in">Journey Builder in Agentforce Marketing, plus Sales and Service Clouds, under one product.<sup><a href="#s10">10</a></sup></td>
+          <td data-label="Channels named">SMS, MMS, RCS, WhatsApp</td>
+          <td data-label="What it tells you">Pitches messaging for any Salesforce user without a user-based licence, and direct CPaaS pricing. The closest thing to what you are planning, and the benchmark for coverage.</td>
+        </tr>
+        <tr>
+          <th scope="row">Twilio</th>
+          <td data-label="Where it plugs in">Salesforce Voice partner telephony, generally available April 2026.<sup><a href="#s12">12</a></sup> SMS and WhatsApp routed through TaskRouter into Omni-Channel from September 2026.<sup><a href="#s11">11</a></sup></td>
+          <td data-label="Channels named">Voice, SMS, WhatsApp</td>
+          <td data-label="What it tells you">Salesforce messaging arrives through its contact center stack, so it is aimed at service teams, not sales or marketing.</td>
+        </tr>
+        <tr>
+          <th scope="row">Sinch</th>
+          <td data-label="Where it plugs in">Marketing Cloud Omnichannel Connector on AppExchange, built on its Conversation API.<sup><a href="#s13">13</a></sup></td>
+          <td data-label="Channels named">SMS, MMS, RCS, WhatsApp, Viber, KakaoTalk, Instagram, Messenger, Telegram, LINE</td>
+          <td data-label="What it tells you">Marketing teams first. Channel breadth and automatic fallback are the selling points.</td>
+        </tr>
+        <tr>
+          <th scope="row">Infobip</th>
+          <td data-label="Where it plugs in">Service Cloud through Bring Your Own Channel, marked Early Access.<sup><a href="#s14">14</a></sup></td>
+          <td data-label="Channels named">WhatsApp</td>
+          <td data-label="What it tells you">Needs Digital Engagement with Partner Messaging, and the admin builds a connected app, a platform event, an iframe page, an Omni-Channel flow, a queue and presence settings by hand. That setup effort is the gap to close.</td>
+        </tr>
+        <tr>
+          <th scope="row">SMS-Magic</th>
+          <td data-label="Where it plugs in">Salesforce-native managed package.<sup><a href="#s15">15</a></sup></td>
+          <td data-label="Channels named">Text, WhatsApp, Messenger, LINE</td>
+          <td data-label="What it tells you">The native incumbent you will be compared against in smaller orgs. States 42 direct carriers and more than 2,459 customers.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">Public pages show what each one advertises. How they behave after install, what consent handling looks like in practice and what a message really costs once you leave the brochure are what the first milestone tests hands-on.</p>
+  </div>
+</section>
+
+<section class="block" id="questions">
+  <div class="wrap">
+    <h2>Your seven questions, answered</h2>
+    <p class="intro measure">Our starting position on each. The first milestone either confirms it with evidence or changes it.</p>
+
+    <div class="qa">
+      <div class="q"><h3>What can we leverage from Salesforce rather than rebuilding?</h3></div>
+      <div class="a"><p>Flow, Agentforce actions, list views, reports, the standard consent and contact point objects, Omni-Channel routing where the customer already has it, and the Journey Builder canvas. Rebuild none of them. Your build is the rail and the thin layer that exposes it.</p></div>
+
+      <div class="q"><h3>Which capabilities should be Salesforce-native components?</h3></div>
+      <div class="a"><p>Everything a Salesforce user touches daily: the conversation panel on any record, bulk send from list views, invocable actions for Flow and Agentforce, consent sync, and delivery status written back to the record.</p></div>
+
+      <div class="q"><h3>Which capabilities should live in our own platform?</h3></div>
+      <div class="a"><p>Number provisioning, 10DLC brand and campaign registration, opt-out enforcement, content screening, the RCS template registry, delivery analytics and the AI agent runtime. Your public API already covers registrations, opt-out enforcement, idempotent requests and webhooks, so the package calls those rather than copying them.</p></div>
+
+      <div class="q"><h3>Standalone RCS campaign builder, embedded, or hybrid?</h3></div>
+      <div class="a"><p>Hybrid. Compose and register RCS templates once on your platform, because sender verification and template approval are rail work. Render the same composer inside Salesforce and expose saved templates to Flow and Journey Builder. A standalone builder adds another login. A fully native builder means rebuilding it for each cloud.</p></div>
+
+      <div class="q"><h3>How do enterprises use our CPaaS instead of Salesforce’s providers?</h3></div>
+      <div class="a"><p>Two doors on one rail. The package door works in any Sales or Service org with no messaging add-on. The enterprise door is a Bring Your Own Channel connector, so customers who already pay for Digital Engagement see your SMS and RCS inside the Service console and Omni-Channel. Same numbers, same consent and the same bill on both.</p></div>
+
+      <div class="q"><h3>How do we cut implementation complexity?</h3></div>
+      <div class="a"><p>Ship the connected app, platform event and permission sets inside the package so the admin runs one guided setup screen, then registers the 10DLC brand and campaign from inside Salesforce. The bar to beat is the manual list in today’s partner messaging guides. The target is install to first compliant message in one working session.</p></div>
+
+      <div class="q"><h3>What would make an enterprise choose us over Vonage?</h3></div>
+      <div class="a"><p>Vonage already offers messaging to any Salesforce user without a per-user licence, so native coverage alone will not win. Our bet is three things together: your price (your own comparison puts you up to 78% under Vonage), compliance enforced at the rail so a message that breaks opt-out or content rules never reaches a carrier whichever Salesforce surface sent it, and self-serve from install to first message to match your product-led motion. The teardown tests whether that gap holds in practice.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="architecture">
+  <div class="wrap">
+    <h2>Where each piece runs</h2>
+    <p class="intro measure">The amber line is your API. Salesforce holds the experience. Your platform holds every rule that keeps a number clean.</p>
+
+    <div class="lanes-head"><div>Inside the customer’s Salesforce org</div><div class="gut"></div><div>On your platform</div></div>
+
+    <p class="path-title">Sending</p>
+    <div class="lane-row"><div class="step"><span class="n">1</span><div><span class="tag">In Salesforce</span>A user clicks send on a record, or a Flow or Agentforce action fires.</div></div><div class="gut"></div><div class="empty"></div></div>
+    <div class="lane-row"><div class="step"><span class="n">2</span><div><span class="tag">In Salesforce</span>The package calls your API with that org’s own credentials and an idempotency key, so a retry never sends twice.</div></div><div class="gut"></div><div class="empty"></div></div>
+    <div class="lane-row"><div class="empty"></div><div class="gut"></div><div class="step"><span class="n">3</span><div><span class="tag">On your platform</span>The rail checks opt-out status, the 10DLC campaign and your content rules before anything reaches a carrier.</div></div></div>
+    <div class="lane-row"><div class="empty"></div><div class="gut"></div><div class="step"><span class="n">4</span><div><span class="tag">On your platform</span>The message goes out on the number assigned to that campaign.</div></div></div>
+    <div class="lane-row"><div class="step"><span class="n">5</span><div><span class="tag">In Salesforce</span>Delivery status comes back as a platform event and lands on the record.</div></div><div class="gut"></div><div class="empty"></div></div>
+
+    <p class="path-title">Receiving</p>
+    <div class="lane-row"><div class="empty"></div><div class="gut"></div><div class="step"><span class="n">1</span><div><span class="tag">On your platform</span>A reply or a STOP keyword arrives at your webhook.</div></div></div>
+    <div class="lane-row"><div class="empty"></div><div class="gut"></div><div class="step"><span class="n">2</span><div><span class="tag">On your platform</span>The opt-out is applied at the rail first, then pushed to the org’s consent records.</div></div></div>
+    <div class="lane-row"><div class="step"><span class="n">3</span><div><span class="tag">In Salesforce</span>A platform event updates the conversation panel and wakes any Flow or Agentforce agent waiting for a reply.</div></div><div class="gut"></div><div class="empty"></div></div>
+
+    <div class="eng">
+      <p><strong>Bulk sends run on your platform, not in Apex.</strong> A large send never runs into Salesforce callout or governor limits. Salesforce only receives the results, in batches.</p>
+      <p><strong>Each org connects with its own credentials,</strong> held in Salesforce Named Credentials. No shared keys anywhere, which also keeps security review simple.</p>
+      <p><strong>Your platform decides consent at send time.</strong> Salesforce holds the copy that users see, filter and report on, so a send never depends on a stale copy.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="challenge">
+  <div class="wrap">
+    <h2>Three assumptions worth challenging</h2>
+    <p class="intro measure">You asked for someone who pushes back. These are the three we would raise first.</p>
+    <div class="challenges">
+      <div class="challenge">
+        <p class="claim"><s>Start with Bring Your Own Channel.</s></p>
+        <p>It only works for customers who already pay for Digital Engagement with the Partner Messaging add-on. Start with the package door, which works in any Sales or Service org, and bring the connector in for enterprise deals.</p>
+      </div>
+      <div class="challenge">
+        <p class="claim"><s>Build a standalone RCS campaign builder.</s></p>
+        <p>It adds a login and pulls campaigns away from the CRM record. Build the composer once on your platform and embed it where people already work.</p>
+      </div>
+      <div class="challenge">
+        <p class="claim"><s>Marketing Cloud is the first market.</s></p>
+        <p>It is the most crowded door. Salesforce ships its own SMS, WhatsApp and RCS in Marketing Cloud Next, and Vonage and Sinch already sell into Journey Builder. Your SMB and mid-market base is far more likely to live on record pages and in Flow.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="plan">
+  <div class="wrap">
+    <h2>How the work runs</h2>
+    <p class="intro measure">Fixed milestones, each with written acceptance criteria and a date. Later milestones are priced once the first is accepted.</p>
+    <div class="milestones">
+      <div class="ms">
+        <div class="n">1</div>
+        <div><h3>Assessment and direction</h3><p>Native capability matrix checked in a working Salesforce org. Hands-on teardown of Vonage, Twilio, Sinch, Infobip and SMS-Magic across every criterion in your brief, where trials allow. Gap analysis, recommended product direction and an architecture outline.</p></div>
+        <div class="time">10 working days<small>Fixed price</small></div>
+      </div>
+      <div class="ms">
+        <div class="n">2</div>
+        <div><h3>PRD and architecture</h3><p>Product requirements, data model, integration contracts against your API, security review plan, and a prioritised MVP backlog your engineers can start on the next morning.</p></div>
+        <div class="time">10 working days<small>Priced after milestone 1</small></div>
+      </div>
+      <div class="ms">
+        <div class="n">3</div>
+        <div><h3>MVP build guidance</h3><p>Working alongside your engineers on the core package: conversation panel, Flow and Agentforce actions, consent sync, guided setup and the security review submission. Our Salesforce developers can take the package work outright if you prefer.</p></div>
+        <div class="time">30 working days<small>Priced after milestone 1</small></div>
+      </div>
+      <div class="ms">
+        <div class="n">4</div>
+        <div><h3>Enterprise doors</h3><p>Journey Builder activity, the Partner Messaging connector for the Service console, and the Salesforce Voice decision.</p></div>
+        <div class="time">Scoped in milestone 2</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="team">
+  <div class="wrap two">
+    <div>
+      <h2>Who does the work</h2>
+      <ul class="list">
+        <li>A Salesforce architect holding nine certifications, including Platform Developer II, Sharing and Visibility Architect, Marketing Cloud Email Specialist and AI Specialist. Shipped a Service Cloud managed package on AppExchange, built a WhatsApp to Salesforce integration with two-way messaging and conversation history, and delivered CTI integration in Sales Cloud and Omni-Channel case routing in Service Cloud.</li>
+        <li>A bench of Salesforce developers, admins and project leads behind that architect.</li>
+        <li>Carrier-side voice: we delivered the production SIP and WebRTC edge for an Israeli CPaaS and contact center platform, covering TLS and WSS signalling, media bridging, NAT traversal and per-account fraud caps. Their technical lead acts as a vendor reference by email.</li>
+        <li>Between them, Salesforce packaging on one side and carrier-side infrastructure on the other: both halves of the integration you are planning.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What we need to start</h2>
+      <ul class="list">
+        <li>A test subgroup and API key on your platform.</li>
+        <li>Notes on how your HubSpot app talks to your backend, so the Salesforce package can share those services instead of duplicating them.</li>
+        <li>Whether you already hold a Salesforce partner business org for packaging and security review.</li>
+        <li>Which Salesforce clouds your first target customers run.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="sources">
+  <div class="wrap">
+    <h2>Sources</h2>
+    <p class="intro measure">Every figure above was checked on the live page. Prices are public list prices.</p>
+    <ol class="sources">
+      <li id="s1">Salesforce, Marketing Cloud pricing. <a href="https://www.salesforce.com/marketing/pricing/">salesforce.com/marketing/pricing</a></li>
+      <li id="s2">Salesforce Winter ’27 release notes, Marketing Cloud Next channels. <a href="https://help.salesforce.com/s/articleView?id=release-notes.rn_mktg_channels.htm&amp;release=264&amp;type=5">help.salesforce.com</a></li>
+      <li id="s3">Salesforce Help, Provide Conversation Support with Messaging. <a href="https://help.salesforce.com/s/articleView?id=service.livemessage_intro.htm&amp;type=5">help.salesforce.com</a></li>
+      <li id="s4">Salesforce Help, Compare Standard and Enhanced SMS Channel Capabilities. <a href="https://help.salesforce.com/s/articleView?id=service.messaging_sms_compare.htm&amp;type=5">help.salesforce.com</a></li>
+      <li id="s5">Salesforce, Service Cloud pricing. <a href="https://www.salesforce.com/service/pricing/">salesforce.com/service/pricing</a></li>
+      <li id="s6">Salesforce Developers, Get Started with Bring Your Own Channel for Messaging. <a href="https://developer.salesforce.com/docs/service/messaging-partner/guide/introduction.html">developer.salesforce.com</a></li>
+      <li id="s7">Salesforce Developers, Salesforce Voice with Partner Telephony Developer Guide. <a href="https://developer.salesforce.com/docs/atlas.en-us.voice_pt_developer_guide.meta/voice_pt_developer_guide/voice_pt_transfer_calls.htm">developer.salesforce.com</a></li>
+      <li id="s8">Salesforce Developers, Build Custom Activities and Events (Journey Builder). <a href="https://developer.salesforce.com/docs/marketing/marketing-cloud/guide/creating-activities.html">developer.salesforce.com</a></li>
+      <li id="s9">Salesforce Developers, ISVforce Guide, Manage Your Security Reviews. <a href="https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-manage.html">developer.salesforce.com</a></li>
+      <li id="s10">Vonage, Conversations for Salesforce. <a href="https://www.vonage.com/communications-apis/conversations-salesforce/">vonage.com</a></li>
+      <li id="s11">Twilio changelog, September 17, 2026: Salesforce Service Cloud Voice integration is now omnichannel. <a href="https://www.twilio.com/en-us/changelog/twilio-integration-with-salesforce-service-cloud-voice-is-now-om">twilio.com</a></li>
+      <li id="s12">Twilio press release, April 16, 2026: Flex available as an embeddable contact center. <a href="https://www.twilio.com/en-us/press/releases/twilio-flex-now-available-as-an-embeddable-contact-center">twilio.com</a></li>
+      <li id="s13">Sinch, Salesforce Marketing Cloud Omnichannel Connector. <a href="https://sinch.com/integrations/salesforce-marketing-cloud-omnichannel-connector/">sinch.com</a></li>
+      <li id="s14">Infobip Docs, Salesforce Service Cloud messaging. <a href="https://www.infobip.com/docs/integrations/salesforce-service-cloud">infobip.com</a></li>
+      <li id="s15">SMS-Magic, home page. <a href="https://www.sms-magic.com/">sms-magic.com</a></li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">Sources checked on the live pages in October 2026. Salesforce pricing and release content change each release.</div>
+</footer>
+
+</body>
+</html>
